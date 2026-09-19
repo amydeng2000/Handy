@@ -35,6 +35,7 @@ def test_synthesizes_selected_sources_and_preserves_user_rejection():
         body = json.loads(request.content)
         assert body["model"] == "test-model"
         assert body["stream"] is False
+        assert body["response_format"] == {"type": "json_object"}
         prompt = "\n".join(message["content"] for message in body["messages"])
         assert "chat-02" in prompt and "chat-03" in prompt and "voice-07" in prompt
         assert "rejection" in prompt and "user decisions" in prompt
@@ -98,6 +99,20 @@ def test_model_bullet_lists_are_normalized_to_compact_text():
     assert result is not None
     assert result.why_it_changed == "The user rejected the separate reflection app."
     assert result.open_questions == "When should context appear?; How much is enough?"
+
+
+def test_comma_separated_source_ids_are_accepted():
+    packet = {
+        "current_direction": "Continue work in the destination app.",
+        "why_it_changed": "The user rejected the separate reflection app.",
+        "open_questions": "How much context is enough?",
+        "source_ids": "chat-03, chat-05, voice-07",
+    }
+
+    result = run_synthesis(lambda request: httpx.Response(200, json=completion(json.dumps(packet))))
+
+    assert result is not None
+    assert result.source_ids == ["chat-03", "chat-05", "voice-07"]
 
 
 def test_total_deadline_returns_no_packet(monkeypatch):

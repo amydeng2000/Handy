@@ -50,6 +50,7 @@ async def synthesize(
     payload = {
         "model": config.model,
         "stream": False,
+        "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": SYSTEM_INSTRUCTIONS},
             {
