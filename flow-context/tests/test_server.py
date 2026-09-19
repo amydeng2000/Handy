@@ -1,0 +1,98 @@
+import json
+from pathlib import Path
+
+import httpx
+from fastapi.testclient import TestClient
+
+from flow_context.config import FlowConfig, LlmConfig
+from flow_context.server import create_app
+
+
+EXAMPLE = Path(__file__).resolve().parents[1] / "data/example_moments.json"
+UTTERANCE = "What am I still missing about Flow Context?"
+
+
+def config(api_key="test-key"):
+    return FlowConfig(
+        moments_path=EXAMPLE,
+        thread_title="Future of Flow",
+        llm=LlmConfig("https://example.test/v1", "test-model", api_key),
+    )
+
+
+def handy_request(content=UTTERANCE, **extra):
+    return {
+        "model": "flow-context",
+        "messages": [{"role": "user", "content": content}],
+        "stream": False,
+        "reasoning_effort": "none",
+        **extra,
+    }
+
+
+def test_models_and_handy_completion_with_private_debug_metadata():
+    def model_response(request):
+        packet = {
+            "current_direction": "Expand short dictation in a destination app.",
+            "why_it_changed": "The user rejected the AI's standalone reflection app proposal.",
+            "open_questions": "How much context is enough?",
+            "source_ids": ["chat-02", "chat-03", "chat-05", "voice-07"],
+        }
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(packet)}}]})
+
+    app = create_app(config(), transport=httpx.MockTransport(model_response))
+    with TestClient(app) as client:
+        models = client.get("/v1/models")
+        assert models.status_code == 200
+        assert models.json()["data"][0]["id"] == "flow-context"
+
+        response = client.post("/v1/chat/completions", json=handy_request())
+        assert response.status_code == 200
+        content = response.json()["choices"][0]["message"]["content"]
+        assert content.startswith("Flow Context — Future of Flow")
+        assert "Illustrative demo context" in content
+        assert content.endswith("My request: " + UTTERANCE)
+
+        debug = client.get("/debug/last").json()
+        assert debug["thread_title"] == "Future of Flow"
+        assert debug["output_length"] == len(content)
+        assert [source["id"] for source in debug["sources"]] == ["chat-02", "chat-03", "chat-05", "voice-07"]
+        assert debug["sources"][0] == {
+            "id": "chat-02",
+            "date": "2026-09-16",
+            "source_type": "ai_chat",
+            "author_role": "ai",
+            "origin": "synthetic",
+        }
+        debug_text = json.dumps(debug)
+        assert "test-key" not in debug_text
+        assert "standalone reflection app" not in debug_text
+        assert UTTERANCE not in debug_text
+
+
+def test_default_handy_transcript_wrapper_is_extracted():
+    app = create_app(config(api_key=""))
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/chat/completions",
+            json=handy_request("Improve this: <transcript>  Dictated words exactly.  </transcript>"),
+        )
+        assert response.json()["choices"][0]["message"]["content"] == "Dictated words exactly."
+
+
+def test_empty_input_and_invalid_requests():
+    app = create_app(config(api_key=""))
+    with TestClient(app) as client:
+        empty = client.post("/v1/chat/completions", json=handy_request(""))
+        assert empty.json()["choices"][0]["message"]["content"] == ""
+        assert client.post("/v1/chat/completions", json=handy_request(model="other")).status_code == 400
+        assert client.post("/v1/chat/completions", json=handy_request(stream=True)).status_code == 400
+        assert client.post("/v1/chat/completions", json={"model": "flow-context", "messages": []}).status_code == 400
+
+
+def test_model_failure_returns_raw_utterance_and_no_sources():
+    app = create_app(config(), transport=httpx.MockTransport(lambda request: httpx.Response(503)))
+    with TestClient(app) as client:
+        response = client.post("/v1/chat/completions", json=handy_request())
+        assert response.json()["choices"][0]["message"]["content"] == UTTERANCE
+        assert client.get("/debug/last").json()["sources"] == []

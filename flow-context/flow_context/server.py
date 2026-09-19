@@ -1,0 +1,112 @@
+"""Loopback API compatible with Handy's custom post-processing provider."""
+
+import re
+import time
+
+import httpx
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+from .config import FlowConfig, load_config
+from .models import Moment
+from .store import load_moments
+from .synthesis import format_prompt, synthesize
+
+
+MODEL_ID = "flow-context"
+TRANSCRIPT_PATTERN = re.compile(r"<transcript>\s*(.*?)\s*</transcript>", re.DOTALL | re.IGNORECASE)
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    model: str
+    messages: list[ChatMessage]
+    stream: bool = False
+
+
+def extract_utterance(messages: list[ChatMessage]) -> str:
+    for message in reversed(messages):
+        if message.role == "user":
+            match = TRANSCRIPT_PATTERN.search(message.content)
+            return match.group(1).strip() if match else message.content
+    raise HTTPException(status_code=400, detail="a user message is required")
+
+
+def source_metadata(moment: Moment) -> dict[str, str]:
+    return {
+        "id": moment.id,
+        "date": moment.date.isoformat(),
+        "source_type": moment.source_type,
+        "author_role": moment.author_role,
+        "origin": moment.origin,
+    }
+
+
+def create_app(config: FlowConfig | None = None, transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
+    settings = config or load_config()
+    app = FastAPI(title="Flow Context", docs_url=None, redoc_url=None)
+    app.state.last = {"thread_title": settings.thread_title, "sources": [], "output_length": 0}
+
+    @app.get("/v1/models")
+    def list_models():
+        return {
+            "object": "list",
+            "data": [{"id": MODEL_ID, "object": "model", "created": 0, "owned_by": "flow-context"}],
+        }
+
+    @app.post("/v1/chat/completions")
+    async def chat_completion(request: ChatRequest):
+        if request.model != MODEL_ID:
+            raise HTTPException(status_code=400, detail="unknown model")
+        if request.stream:
+            raise HTTPException(status_code=400, detail="streaming is not supported")
+
+        utterance = extract_utterance(request.messages)
+        output = utterance
+        sources: list[dict[str, str]] = []
+
+        if utterance.strip():
+            try:
+                moments = load_moments(settings.moments_path)
+            except (OSError, ValueError):
+                moments = []
+            if moments:
+                async with httpx.AsyncClient(transport=transport) as client:
+                    packet = await synthesize(utterance, moments, client, settings.llm)
+                if packet is not None:
+                    output = format_prompt(utterance, settings.thread_title, packet, moments)
+                    if output != utterance:
+                        moment_by_id = {moment.id: moment for moment in moments}
+                        sources = [source_metadata(moment_by_id[source_id]) for source_id in packet.source_ids]
+
+        app.state.last = {
+            "thread_title": settings.thread_title,
+            "sources": sources,
+            "output_length": len(output),
+        }
+        return {
+            "id": "flow-context-completion",
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": MODEL_ID,
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": output},
+                    "finish_reason": "stop",
+                }
+            ],
+        }
+
+    @app.get("/debug/last")
+    def last_debug():
+        return app.state.last
+
+    return app
+
+
+app = create_app()
