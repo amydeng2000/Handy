@@ -45,3 +45,8 @@ result
 
 # Python bytecode (scripts/)
 __pycache__/
+
+# Flow Context local credentials and private conversation data
+flow-context/.env
+flow-context/.venv/
+flow-context/data/*.local.json

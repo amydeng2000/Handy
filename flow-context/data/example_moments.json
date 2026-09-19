@@ -1,0 +1,65 @@
+[
+  {
+    "id": "voice-01",
+    "date": "2026-09-16",
+    "source_type": "voice",
+    "author_role": "user",
+    "stance": "observation",
+    "origin": "synthetic",
+    "text": "I want to resume a problem I have already explored without recapping every meeting and chat first."
+  },
+  {
+    "id": "chat-02",
+    "date": "2026-09-16",
+    "source_type": "ai_chat",
+    "author_role": "ai",
+    "stance": "proposal",
+    "origin": "synthetic",
+    "text": "One possible demo is a standalone reflection app where a user opens a previous thread and asks what remains unresolved."
+  },
+  {
+    "id": "chat-03",
+    "date": "2026-09-17",
+    "source_type": "ai_chat",
+    "author_role": "user",
+    "stance": "rejection",
+    "origin": "synthetic",
+    "text": "A separate reflection app would miss the workplace moment. I want to continue in the tool where I am already working, such as a fresh ChatGPT chat, coding agent, or email draft."
+  },
+  {
+    "id": "meeting-04",
+    "date": "2026-09-17",
+    "source_type": "meeting",
+    "author_role": "other",
+    "stance": "open_question",
+    "origin": "synthetic",
+    "text": "Illustrative meeting excerpt: would the user trust context inserted into a third-party app if they could inspect which earlier moments supported it?"
+  },
+  {
+    "id": "chat-05",
+    "date": "2026-09-18",
+    "source_type": "ai_chat",
+    "author_role": "user",
+    "stance": "decision",
+    "origin": "synthetic",
+    "text": "The magic moment is a short dictated request in a fresh third-party agent. Handy should expand it with a compact, source-grounded context packet before paste."
+  },
+  {
+    "id": "doc-06",
+    "date": "2026-09-18",
+    "source_type": "document",
+    "author_role": "user",
+    "stance": "decision",
+    "origin": "synthetic",
+    "text": "For the first demo, all uploaded conversation turns belong to one thread. The spoken request names the problem; topic classification is unnecessary."
+  },
+  {
+    "id": "voice-07",
+    "date": "2026-09-18",
+    "source_type": "voice",
+    "author_role": "user",
+    "stance": "open_question",
+    "origin": "synthetic",
+    "text": "How much context is enough to restore my train of thought without flooding the destination app?"
+  }
+]
