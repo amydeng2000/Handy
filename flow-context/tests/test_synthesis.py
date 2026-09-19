@@ -1,0 +1,84 @@
+import asyncio
+import json
+from pathlib import Path
+
+import httpx
+import pytest
+
+from flow_context.config import LlmConfig
+from flow_context.store import load_moments
+from flow_context.synthesis import format_prompt, synthesize
+
+
+MOMENTS = load_moments(Path(__file__).resolve().parents[1] / "data/example_moments.json")
+CONFIG = LlmConfig(base_url="https://example.test/v1", model="test-model", api_key="test-key")
+UTTERANCE = "Given everything I've thought about Flow Context, what am I still missing?"
+
+
+def completion(content):
+    return {"choices": [{"message": {"content": content}}]}
+
+
+def run_synthesis(handler, config=CONFIG):
+    async def go():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await synthesize(UTTERANCE, MOMENTS, client, config)
+
+    return asyncio.run(go())
+
+
+def test_synthesizes_selected_sources_and_preserves_user_rejection():
+    def handler(request):
+        assert str(request.url) == "https://example.test/v1/chat/completions"
+        assert request.headers["authorization"] == "Bearer test-key"
+        body = json.loads(request.content)
+        assert body["model"] == "test-model"
+        assert body["stream"] is False
+        prompt = "\n".join(message["content"] for message in body["messages"])
+        assert "chat-02" in prompt and "chat-03" in prompt and "voice-07" in prompt
+        assert "rejection" in prompt and "user decisions" in prompt
+        packet = {
+            "current_direction": "Expand a short dictation in the destination app with prior context.",
+            "why_it_changed": "The user rejected the AI's standalone reflection app proposal.",
+            "open_questions": "How much context is enough?",
+            "source_ids": ["chat-02", "chat-03", "chat-05", "voice-07"],
+        }
+        return httpx.Response(200, json=completion(json.dumps(packet)))
+
+    packet = run_synthesis(handler)
+    assert packet is not None
+    assert "doc-06" not in packet.source_ids
+    output = format_prompt(UTTERANCE, "Future of Flow", packet, MOMENTS)
+    assert "rejected the AI's standalone reflection app proposal" in output
+    assert "Illustrative demo context" in output
+    assert "chat-03 (Sep 17, synthetic)" in output
+    assert output.endswith("My request: " + UTTERANCE)
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        completion("not json"),
+        completion(""),
+        completion(json.dumps({"current_direction": "x", "why_it_changed": "y", "open_questions": "z", "source_ids": ["unknown"]})),
+        completion(json.dumps({"current_direction": " ", "why_it_changed": "y", "open_questions": "z", "source_ids": ["chat-05"]})),
+        completion(json.dumps({"current_direction": "x" * 1700, "why_it_changed": "y", "open_questions": "z", "source_ids": ["chat-05"]})),
+    ],
+)
+def test_bad_model_output_returns_no_packet(response):
+    packet = run_synthesis(lambda request: httpx.Response(200, json=response))
+    assert packet is None
+
+
+def test_timeout_returns_no_packet():
+    def handler(request):
+        raise httpx.ReadTimeout("timed out", request=request)
+
+    assert run_synthesis(handler) is None
+
+
+def test_missing_key_makes_no_request():
+    def handler(request):
+        raise AssertionError("model request should not be sent")
+
+    assert run_synthesis(handler, LlmConfig(CONFIG.base_url, CONFIG.model, "")) is None

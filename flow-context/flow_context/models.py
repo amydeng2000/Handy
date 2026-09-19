@@ -3,7 +3,7 @@
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class Moment(BaseModel):
@@ -25,3 +25,10 @@ class ContextPacket(BaseModel):
     why_it_changed: str = Field(min_length=1)
     open_questions: str = Field(min_length=1)
     source_ids: list[str] = Field(min_length=1)
+
+    @field_validator("current_direction", "why_it_changed", "open_questions")
+    @classmethod
+    def reject_blank_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("packet fields cannot be blank")
+        return value.strip()
