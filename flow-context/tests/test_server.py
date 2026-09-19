@@ -56,6 +56,7 @@ def test_models_and_handy_completion_with_private_debug_metadata():
         debug = client.get("/debug/last").json()
         assert debug["thread_title"] == "Future of Flow"
         assert debug["output_length"] == len(content)
+        assert debug["fallback_reason"] is None
         assert [source["id"] for source in debug["sources"]] == ["chat-02", "chat-03", "chat-05", "voice-07"]
         assert debug["sources"][0] == {
             "id": "chat-02",
@@ -106,4 +107,6 @@ def test_model_failure_returns_raw_utterance_and_no_sources():
     with TestClient(app) as client:
         response = client.post("/v1/chat/completions", json=handy_request())
         assert response.json()["choices"][0]["message"]["content"] == UTTERANCE
-        assert client.get("/debug/last").json()["sources"] == []
+        debug = client.get("/debug/last").json()
+        assert debug["sources"] == []
+        assert debug["fallback_reason"] == "upstream_http_503"

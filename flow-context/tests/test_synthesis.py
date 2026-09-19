@@ -20,10 +20,10 @@ def completion(content):
     return {"choices": [{"message": {"content": content}}]}
 
 
-def run_synthesis(handler, config=CONFIG):
+def run_synthesis(handler, config=CONFIG, diagnostics=None):
     async def go():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            return await synthesize(UTTERANCE, MOMENTS, client, config)
+            return await synthesize(UTTERANCE, MOMENTS, client, config, diagnostics=diagnostics)
 
     return asyncio.run(go())
 
@@ -76,6 +76,28 @@ def test_timeout_returns_no_packet():
         raise httpx.ReadTimeout("timed out", request=request)
 
     assert run_synthesis(handler) is None
+
+
+def test_fallback_reason_identifies_invalid_response_without_leaking_content():
+    diagnostics = {}
+
+    assert run_synthesis(lambda request: httpx.Response(200, json=completion("not json")), diagnostics=diagnostics) is None
+    assert diagnostics == {"reason": "invalid_model_response"}
+
+
+def test_model_bullet_lists_are_normalized_to_compact_text():
+    packet = {
+        "current_direction": "Continue work in the destination app.",
+        "why_it_changed": ["The user rejected the separate reflection app."],
+        "open_questions": ["When should context appear?", "How much is enough?"],
+        "source_ids": ["chat-03", "chat-05"],
+    }
+
+    result = run_synthesis(lambda request: httpx.Response(200, json=completion(json.dumps(packet))))
+
+    assert result is not None
+    assert result.why_it_changed == "The user rejected the separate reflection app."
+    assert result.open_questions == "When should context appear?; How much is enough?"
 
 
 def test_total_deadline_returns_no_packet(monkeypatch):

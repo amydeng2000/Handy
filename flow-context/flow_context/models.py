@@ -28,6 +28,13 @@ class ContextPacket(BaseModel):
     open_questions: str = Field(min_length=1)
     source_ids: list[str] = Field(min_length=1)
 
+    @field_validator("current_direction", "why_it_changed", "open_questions", mode="before")
+    @classmethod
+    def normalize_bullet_list(cls, value: object) -> object:
+        if isinstance(value, list) and all(isinstance(part, str) for part in value):
+            return "; ".join(part.strip() for part in value if part.strip())
+        return value
+
     @field_validator("current_direction", "why_it_changed", "open_questions")
     @classmethod
     def reject_blank_text(cls, value: str) -> str:

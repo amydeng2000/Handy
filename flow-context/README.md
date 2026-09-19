@@ -68,7 +68,7 @@ curl http://127.0.0.1:8000/v1/models
 curl http://127.0.0.1:8000/debug/last
 ```
 
-`/debug/last` shows only the thread title, selected IDs, dates, source types, author roles, origin labels, and output length. It contains no full source text, dictated words, or API key. Before the first request its source list is empty. If synthesis fails, times out, returns malformed content, cites unknown IDs, or exceeds the 1,600-character context limit, the service returns the raw dictated request and clears the debug source list.
+`/debug/last` shows the thread title, selected IDs, dates, source types, author roles, origin labels, output length, and a short `fallback_reason` when context was not added. It contains no full source text, dictated words, or API key. Before the first request its source list is empty. If synthesis fails, times out, returns malformed content, cites unknown IDs, or exceeds the 1,600-character context limit, the service returns the raw dictated request and clears the debug source list.
 
 ## 4. Point the official Handy app at the service
 
@@ -95,7 +95,7 @@ A mocked API test verifies the expanded response shape; a local credential-free 
 
 ## Recovery
 
-- If the service returns only your spoken words, check that `.env` has a key, the moments path exists, and `/debug/last` has selected sources. Restart the service after `.env` changes. The server intentionally falls back to raw dictation on synthesis errors.
+- If the service returns only your spoken words, inspect `fallback_reason` at `/debug/last`, then check that `.env` has a key and the moments path exists. Restart the service after `.env` or code changes. The server intentionally falls back to raw dictation on synthesis errors.
 - If Handy cannot reach the service, check the Base URL and that the loopback server is still running. Stop the service with `Ctrl+C` and restart with the command above. When the service is stopped, Handy's post-processing error path falls back to its original transcription; the ordinary transcription shortcut also remains available.
 - If the wrong model appears, refresh the custom provider model list or create `flow-context` manually in Handy's model selector.
 
