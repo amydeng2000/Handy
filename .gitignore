@@ -49,6 +49,7 @@ __pycache__/
 # Flow Context local credentials and private conversation data
 flow-context/.env
 flow-context/.venv/
+flow-context/*.egg-info/
 flow-context/data/*.local.json
 flow-context/data/*.local.md
 flow-context/data/*.local.txt

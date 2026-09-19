@@ -1,5 +1,6 @@
 """Synthesize cited context and compose a prompt for the receiving app."""
 
+import asyncio
 import json
 
 import httpx
@@ -53,18 +54,19 @@ async def synthesize(
     }
 
     try:
-        response = await client.post(
-            f"{config.base_url.rstrip('/')}/chat/completions",
-            json=payload,
-            headers={"Authorization": f"Bearer {config.api_key}"},
-            timeout=REQUEST_TIMEOUT_SECONDS,
-        )
-        response.raise_for_status()
-        content = response.json()["choices"][0]["message"]["content"]
-        if not isinstance(content, str):
-            return None
-        packet = ContextPacket.model_validate(json.loads(content))
-    except (httpx.HTTPError, ValueError, TypeError, KeyError, IndexError, ValidationError):
+        async with asyncio.timeout(REQUEST_TIMEOUT_SECONDS):
+            response = await client.post(
+                f"{config.base_url.rstrip('/')}/chat/completions",
+                json=payload,
+                headers={"Authorization": f"Bearer {config.api_key}"},
+                timeout=REQUEST_TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
+            content = response.json()["choices"][0]["message"]["content"]
+            if not isinstance(content, str):
+                return None
+            packet = ContextPacket.model_validate(json.loads(content))
+    except (TimeoutError, httpx.HTTPError, ValueError, TypeError, KeyError, IndexError, ValidationError):
         return None
 
     moment_by_id = {moment.id: moment for moment in moments}

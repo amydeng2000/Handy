@@ -8,6 +8,7 @@ import pytest
 from flow_context.config import LlmConfig
 from flow_context.store import load_moments
 from flow_context.synthesis import format_prompt, synthesize
+import flow_context.synthesis as synthesis_module
 
 
 MOMENTS = load_moments(Path(__file__).resolve().parents[1] / "data/example_moments.json")
@@ -73,6 +74,22 @@ def test_bad_model_output_returns_no_packet(response):
 def test_timeout_returns_no_packet():
     def handler(request):
         raise httpx.ReadTimeout("timed out", request=request)
+
+    assert run_synthesis(handler) is None
+
+
+def test_total_deadline_returns_no_packet(monkeypatch):
+    monkeypatch.setattr(synthesis_module, "REQUEST_TIMEOUT_SECONDS", 0.01)
+
+    async def handler(request):
+        await asyncio.sleep(0.05)
+        packet = {
+            "current_direction": "Use context in another app.",
+            "why_it_changed": "The user rejected the standalone app.",
+            "open_questions": "How much context?",
+            "source_ids": ["chat-03"],
+        }
+        return httpx.Response(200, json=completion(json.dumps(packet)))
 
     assert run_synthesis(handler) is None
 
