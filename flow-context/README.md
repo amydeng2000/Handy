@@ -68,7 +68,7 @@ curl http://127.0.0.1:8000/v1/models
 curl http://127.0.0.1:8000/debug/last
 ```
 
-`/debug/last` shows the thread title, selected IDs, dates, source types, author roles, origin labels, output length, and a short `fallback_reason` when context was not added. It contains no full source text, dictated words, or API key. Before the first request its source list is empty. If synthesis fails, times out, returns malformed content, cites unknown IDs, or exceeds the 1,600-character context limit, the service returns the raw dictated request and clears the debug source list.
+`/debug/last` shows the thread title, selected IDs, dates, source types, author roles, origin labels, output length, and a short `fallback_reason` when context was not added. For upstream HTTP errors it also shows safe error type, code, and parameter fields when the provider supplies them. It excludes the provider's message, full source text, dictated words, and API key. Before the first request its source list is empty. If synthesis fails, times out, returns malformed content, cites unknown IDs, or exceeds the 1,600-character context limit, the service returns the raw dictated request and clears the debug source list.
 
 ## 4. Point the official Handy app at the service
 

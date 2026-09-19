@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 
 import httpx
 from pydantic import ValidationError
@@ -11,6 +12,17 @@ from .models import ContextPacket, Moment
 
 MAX_CONTEXT_CHARS = 1600
 REQUEST_TIMEOUT_SECONDS = 30.0
+SAFE_ERROR_TOKEN = re.compile(r"[A-Za-z_][A-Za-z0-9_-]{0,63}\Z")
+SAFE_ERROR_PARAMS = {
+    "model",
+    "messages",
+    "response_format",
+    "stream",
+    "max_tokens",
+    "temperature",
+    "top_p",
+    "reasoning_effort",
+}
 
 SYSTEM_INSTRUCTIONS = """Based on the context of the user's historical conversations, meeting notes, brainstorming sessions, etc. on the same topic, generate a compact context summary relevant to the user's new request.
 Return only one JSON object with exactly these keys: context_summary and source_ids.
@@ -82,6 +94,21 @@ async def synthesize(
     except (TimeoutError, httpx.TimeoutException):
         return reject("timeout")
     except httpx.HTTPStatusError as error:
+        if diagnostics is not None:
+            try:
+                upstream_error = error.response.json().get("error")
+            except (ValueError, AttributeError):
+                upstream_error = None
+            if isinstance(upstream_error, dict):
+                for field in ("type", "code"):
+                    value = upstream_error.get(field)
+                    if isinstance(value, str) and SAFE_ERROR_TOKEN.fullmatch(value):
+                        diagnostics[f"upstream_{field}"] = value
+                param = upstream_error.get("param")
+                if isinstance(param, str):
+                    param_root = re.split(r"[.\[]", param, maxsplit=1)[0]
+                    if param_root in SAFE_ERROR_PARAMS:
+                        diagnostics["upstream_param"] = param_root
         return reject(f"upstream_http_{error.response.status_code}")
     except httpx.HTTPError:
         return reject("network_error")

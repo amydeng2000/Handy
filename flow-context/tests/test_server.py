@@ -108,3 +108,28 @@ def test_model_failure_returns_raw_utterance_and_no_sources():
         debug = client.get("/debug/last").json()
         assert debug["sources"] == []
         assert debug["fallback_reason"] == "upstream_http_503"
+
+
+def test_upstream_error_metadata_is_visible_without_private_message():
+    error_response = {
+        "error": {
+            "type": "invalid_request_error",
+            "code": "unsupported_value",
+            "param": "response_format",
+            "message": "Private dictated words and source text must stay hidden.",
+        }
+    }
+    app = create_app(config(), transport=httpx.MockTransport(lambda request: httpx.Response(400, json=error_response)))
+
+    with TestClient(app) as client:
+        response = client.post("/v1/chat/completions", json=handy_request())
+        assert response.json()["choices"][0]["message"]["content"] == UTTERANCE
+        debug = client.get("/debug/last").json()
+
+    assert debug["fallback_reason"] == "upstream_http_400"
+    assert debug["upstream_error"] == {
+        "type": "invalid_request_error",
+        "code": "unsupported_value",
+        "param": "response_format",
+    }
+    assert "Private dictated words" not in json.dumps(debug)

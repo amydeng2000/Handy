@@ -60,7 +60,13 @@ def source_metadata(moment: Moment) -> dict[str, str]:
 def create_app(config: FlowConfig | None = None, transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
     settings = config or load_config()
     app = FastAPI(title="Flow Context", docs_url=None, redoc_url=None)
-    app.state.last = {"thread_title": settings.thread_title, "sources": [], "output_length": 0, "fallback_reason": None}
+    app.state.last = {
+        "thread_title": settings.thread_title,
+        "sources": [],
+        "output_length": 0,
+        "fallback_reason": None,
+        "upstream_error": {},
+    }
 
     @app.get("/v1/models")
     def list_models():
@@ -80,6 +86,7 @@ def create_app(config: FlowConfig | None = None, transport: httpx.AsyncBaseTrans
         output = utterance
         sources: list[dict[str, str]] = []
         fallback_reason: str | None = "empty_utterance" if not utterance.strip() else None
+        diagnostics: dict[str, str] = {}
 
         if utterance.strip():
             try:
@@ -88,7 +95,6 @@ def create_app(config: FlowConfig | None = None, transport: httpx.AsyncBaseTrans
                 moments = []
                 fallback_reason = "invalid_moments_file"
             if moments:
-                diagnostics: dict[str, str] = {}
                 async with httpx.AsyncClient(transport=transport) as client:
                     packet = await synthesize(utterance, moments, client, settings.llm, diagnostics=diagnostics)
                 if packet is not None:
@@ -106,6 +112,15 @@ def create_app(config: FlowConfig | None = None, transport: httpx.AsyncBaseTrans
             "sources": sources,
             "output_length": len(output),
             "fallback_reason": fallback_reason,
+            "upstream_error": {
+                field: diagnostics[key]
+                for field, key in (
+                    ("type", "upstream_type"),
+                    ("code", "upstream_code"),
+                    ("param", "upstream_param"),
+                )
+                if key in diagnostics
+            },
         }
         return {
             "id": "flow-context-completion",
