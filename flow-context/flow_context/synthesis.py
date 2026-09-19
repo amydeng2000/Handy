@@ -102,7 +102,6 @@ async def synthesize(
 
 def format_prompt(
     utterance: str,
-    thread_title: str,
     packet: ContextPacket,
     moments: list[Moment],
 ) -> str:
@@ -113,9 +112,7 @@ def format_prompt(
         f"{moment.id} ({moment.date.strftime('%b')} {moment.date.day}, {moment.origin}) [{moment.source_type}/{moment.author_role}]"
         for moment in selected
     )
-    lines = [f"Flow Context — {thread_title}"]
-    if any(moment.origin == "synthetic" for moment in selected):
-        lines.append("Illustrative demo context")
+    lines = ["Historical context"]
     lines.extend(
         [
             f"Current direction: {packet.current_direction}",

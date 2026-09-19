@@ -49,8 +49,9 @@ def test_models_and_handy_completion_with_private_debug_metadata():
         response = client.post("/v1/chat/completions", json=handy_request())
         assert response.status_code == 200
         content = response.json()["choices"][0]["message"]["content"]
-        assert content.startswith("Flow Context — Future of Flow")
-        assert "Illustrative demo context" in content
+        assert content.startswith("Historical context\n")
+        assert "Illustrative demo context" not in content
+        assert "synthetic" in content
         assert content.endswith("My request: " + UTTERANCE)
 
         debug = client.get("/debug/last").json()

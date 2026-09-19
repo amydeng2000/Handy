@@ -92,7 +92,7 @@ def create_app(config: FlowConfig | None = None, transport: httpx.AsyncBaseTrans
                 async with httpx.AsyncClient(transport=transport) as client:
                     packet = await synthesize(utterance, moments, client, settings.llm, diagnostics=diagnostics)
                 if packet is not None:
-                    output = format_prompt(utterance, settings.thread_title, packet, moments)
+                    output = format_prompt(utterance, packet, moments)
                     if output != utterance:
                         moment_by_id = {moment.id: moment for moment in moments}
                         sources = [source_metadata(moment_by_id[source_id]) for source_id in packet.source_ids]

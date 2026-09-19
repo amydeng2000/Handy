@@ -20,7 +20,7 @@ Edit `.env` locally. Put your OpenAI API key in `FLOW_CONTEXT_LLM_API_KEY`; do n
 | Setting | Use |
 | --- | --- |
 | `FLOW_CONTEXT_MOMENTS_PATH` | JSON file for the one active thread; relative paths start in `flow-context/` |
-| `FLOW_CONTEXT_THREAD_TITLE` | Title shown at the top of the pasted packet |
+| `FLOW_CONTEXT_THREAD_TITLE` | Thread title shown in the local debug view |
 | `FLOW_CONTEXT_LLM_BASE_URL` | OpenAI-compatible API base URL, including `/v1` |
 | `FLOW_CONTEXT_LLM_MODEL` | Upstream model used to synthesize context |
 | `FLOW_CONTEXT_LLM_API_KEY` | Upstream API key, stored only in `.env` |
@@ -86,7 +86,7 @@ You do not need to build the Handy fork for this stage. If Handy cannot record o
 ## 5. Rehearse the two-app moment
 
 1. Open a fresh ChatGPT conversation. Focus the prompt field. Invoke Handy's post-processing shortcut and say a short request that names your thread, such as “Given everything I've thought about Flow Context, what am I still missing?”
-2. Inspect the pasted prompt before submitting. It should show **Current direction**, **Why it changed**, **Still open**, source markers, and your exact words under **My request**. The example dataset adds **Illustrative demo context**; real and synthetic source markers stay distinct.
+2. Inspect the pasted prompt before submitting. It should start with **Historical context**, then show **Current direction**, **Why it changed**, **Still open**, source markers, and your exact words under **My request**. Each source marker still says whether its record is real or synthetic.
 3. Open `http://127.0.0.1:8000/debug/last` locally and verify that the selected IDs support the summary. An earlier AI proposal should be described as rejected if a later user turn rejected it.
 4. Open a fresh second agent or coding surface. Say “Can you turn the direction I've landed on for Flow Context into the smallest implementation plan?” The same thread should appear with emphasis suited to this request.
 5. Record the exact spoken requests, selected source IDs, and any failure in an ignored local file such as `data/demo-log.local.md`. Do not copy private source text or credentials into a log or issue.

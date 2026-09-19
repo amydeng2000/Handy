@@ -50,9 +50,10 @@ def test_synthesizes_selected_sources_and_preserves_user_rejection():
     packet = run_synthesis(handler)
     assert packet is not None
     assert "doc-06" not in packet.source_ids
-    output = format_prompt(UTTERANCE, "Future of Flow", packet, MOMENTS)
+    output = format_prompt(UTTERANCE, packet, MOMENTS)
+    assert output.startswith("Historical context\n")
     assert "rejected the AI's standalone reflection app proposal" in output
-    assert "Illustrative demo context" in output
+    assert "Illustrative demo context" not in output
     assert "chat-03 (Sep 17, synthetic)" in output
     assert output.endswith("My request: " + UTTERANCE)
 
