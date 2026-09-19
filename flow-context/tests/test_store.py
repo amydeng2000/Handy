@@ -73,3 +73,13 @@ def test_rereads_file_each_time(tmp_path, sample_moments):
 
     write_moments(tmp_path, sample_moments)
     assert len(load_moments(path)) == 2
+
+
+def test_preserves_conversation_source_context(tmp_path, sample_moments):
+    sample_moments[0]["conversation_id"] = "conversation-1"
+    sample_moments[0]["source_label"] = "Synthetic Master Plan meeting summary"
+
+    moments = load_moments(write_moments(tmp_path, sample_moments))
+
+    assert moments[1].conversation_id == "conversation-1"
+    assert moments[1].source_label == "Synthetic Master Plan meeting summary"

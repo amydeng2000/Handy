@@ -45,13 +45,16 @@ def extract_utterance(messages: list[ChatMessage]) -> str:
 
 
 def source_metadata(moment: Moment) -> dict[str, str]:
-    return {
+    metadata = {
         "id": moment.id,
         "date": moment.date.isoformat(),
         "source_type": moment.source_type,
         "author_role": moment.author_role,
         "origin": moment.origin,
     }
+    if moment.source_label:
+        metadata["source_label"] = moment.source_label
+    return metadata
 
 
 def create_app(config: FlowConfig | None = None, transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:

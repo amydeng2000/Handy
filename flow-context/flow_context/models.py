@@ -10,6 +10,8 @@ class Moment(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str = Field(min_length=1)
+    conversation_id: str | None = Field(default=None, min_length=1)
+    source_label: str | None = Field(default=None, min_length=1)
     date: date
     source_type: Literal["voice", "ai_chat", "meeting", "document"]
     author_role: Literal["user", "ai", "other"]
