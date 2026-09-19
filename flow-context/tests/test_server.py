@@ -33,9 +33,7 @@ def handy_request(content=UTTERANCE, **extra):
 def test_models_and_handy_completion_with_private_debug_metadata():
     def model_response(request):
         packet = {
-            "current_direction": "Expand short dictation in a destination app.",
-            "why_it_changed": "The user rejected the AI's standalone reflection app proposal.",
-            "open_questions": "How much context is enough?",
+            "context_summary": "The user rejected the AI's standalone reflection app proposal and wants dictation expanded in a destination app.",
             "source_ids": ["chat-02", "chat-03", "chat-05", "voice-07"],
         }
         return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(packet)}}]})
@@ -49,10 +47,9 @@ def test_models_and_handy_completion_with_private_debug_metadata():
         response = client.post("/v1/chat/completions", json=handy_request())
         assert response.status_code == 200
         content = response.json()["choices"][0]["message"]["content"]
-        assert content.startswith("Historical context\n")
-        assert "Illustrative demo context" not in content
+        assert content.startswith(UTTERANCE + "\n\nHistorical context\n")
         assert "synthetic" in content
-        assert content.endswith("My request: " + UTTERANCE)
+        assert "My request:" not in content
 
         debug = client.get("/debug/last").json()
         assert debug["thread_title"] == "Future of Flow"

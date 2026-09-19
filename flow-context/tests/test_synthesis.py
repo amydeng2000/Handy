@@ -40,9 +40,7 @@ def test_synthesizes_selected_sources_and_preserves_user_rejection():
         assert "chat-02" in prompt and "chat-03" in prompt and "voice-07" in prompt
         assert "rejection" in prompt and "user decisions" in prompt
         packet = {
-            "current_direction": "Expand a short dictation in the destination app with prior context.",
-            "why_it_changed": "The user rejected the AI's standalone reflection app proposal.",
-            "open_questions": "How much context is enough?",
+            "context_summary": "The user rejected the AI's standalone reflection app proposal and now wants short dictation expanded in the destination app.",
             "source_ids": ["chat-02", "chat-03", "chat-05", "voice-07"],
         }
         return httpx.Response(200, json=completion(json.dumps(packet)))
@@ -51,11 +49,11 @@ def test_synthesizes_selected_sources_and_preserves_user_rejection():
     assert packet is not None
     assert "doc-06" not in packet.source_ids
     output = format_prompt(UTTERANCE, packet, MOMENTS)
-    assert output.startswith("Historical context\n")
+    assert output.startswith(UTTERANCE + "\n\nHistorical context\n")
     assert "rejected the AI's standalone reflection app proposal" in output
-    assert "Illustrative demo context" not in output
     assert "chat-03 (Sep 17, synthetic)" in output
-    assert output.endswith("My request: " + UTTERANCE)
+    assert "My request:" not in output
+    assert "Current direction:" not in output
 
 
 @pytest.mark.parametrize(
@@ -63,9 +61,9 @@ def test_synthesizes_selected_sources_and_preserves_user_rejection():
     [
         completion("not json"),
         completion(""),
-        completion(json.dumps({"current_direction": "x", "why_it_changed": "y", "open_questions": "z", "source_ids": ["unknown"]})),
-        completion(json.dumps({"current_direction": " ", "why_it_changed": "y", "open_questions": "z", "source_ids": ["chat-05"]})),
-        completion(json.dumps({"current_direction": "x" * 1700, "why_it_changed": "y", "open_questions": "z", "source_ids": ["chat-05"]})),
+        completion(json.dumps({"context_summary": "Summary", "source_ids": ["unknown"]})),
+        completion(json.dumps({"context_summary": " ", "source_ids": ["chat-05"]})),
+        completion(json.dumps({"context_summary": "x" * 1700, "source_ids": ["chat-05"]})),
     ],
 )
 def test_bad_model_output_returns_no_packet(response):
@@ -87,26 +85,21 @@ def test_fallback_reason_identifies_invalid_response_without_leaking_content():
     assert diagnostics == {"reason": "invalid_model_response"}
 
 
-def test_model_bullet_lists_are_normalized_to_compact_text():
+def test_model_bullet_list_summary_is_normalized_to_text():
     packet = {
-        "current_direction": "Continue work in the destination app.",
-        "why_it_changed": ["The user rejected the separate reflection app."],
-        "open_questions": ["When should context appear?", "How much is enough?"],
+        "context_summary": ["The user rejected the separate reflection app.", "Context should appear in the destination app."],
         "source_ids": ["chat-03", "chat-05"],
     }
 
     result = run_synthesis(lambda request: httpx.Response(200, json=completion(json.dumps(packet))))
 
     assert result is not None
-    assert result.why_it_changed == "The user rejected the separate reflection app."
-    assert result.open_questions == "When should context appear?; How much is enough?"
+    assert result.context_summary == "The user rejected the separate reflection app.; Context should appear in the destination app."
 
 
 def test_comma_separated_source_ids_are_accepted():
     packet = {
-        "current_direction": "Continue work in the destination app.",
-        "why_it_changed": "The user rejected the separate reflection app.",
-        "open_questions": "How much context is enough?",
+        "context_summary": "The user rejected the separate reflection app and wants context in the destination app.",
         "source_ids": "chat-03, chat-05, voice-07",
     }
 
@@ -122,9 +115,7 @@ def test_total_deadline_returns_no_packet(monkeypatch):
     async def handler(request):
         await asyncio.sleep(0.05)
         packet = {
-            "current_direction": "Use context in another app.",
-            "why_it_changed": "The user rejected the standalone app.",
-            "open_questions": "How much context?",
+            "context_summary": "Use context in another app after rejecting the standalone app.",
             "source_ids": ["chat-03"],
         }
         return httpx.Response(200, json=completion(json.dumps(packet)))

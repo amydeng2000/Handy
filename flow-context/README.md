@@ -1,6 +1,6 @@
 # Flow Context demo for Handy
 
-This local service lets the official Handy app paste an expanded prompt into a fresh ChatGPT chat, coding agent, or other text field. Handy transcribes your speech. The service reads one curated thread of earlier conversations, asks the configured OpenAI model for a short cited context packet, and returns that packet followed by your exact request. The receiving app answers the expanded prompt. The service does not answer the request itself.
+This local service lets the official Handy app paste an expanded prompt into a fresh ChatGPT chat, coding agent, or other text field. Handy transcribes your speech. The service reads one curated thread of earlier conversations, asks the configured OpenAI model for a short cited context summary, and places it after your exact request. The receiving app answers the expanded prompt. The service does not answer the request itself.
 
 The pasted text is visible in the destination app. Source IDs and `real`/`synthetic` labels appear there; `/debug/last` shows additional source metadata. No source panel is added to Handy's UI.
 
@@ -31,7 +31,7 @@ To use your own thread, save its converted records as `data/moments.local.json` 
 
 Fill one copy of the [conversation template](../docs/flow-context-conversation-template.md) and attach the `.md` or `.txt` file in chat. You can also keep a local copy under `data/` with a `.local.md` or `.local.txt` suffix. You do **not** need to write JSON or classify stances. We will convert the completed template to `data/moments.local.json` and set its `origin` to `synthetic` when the material is synthetic. Approximate dates and `Day 1` labels are fine; the conversion preserves order using demo dates.
 
-A **moment** is an internal citeable unit: one attributed chat turn, one voice thought, or one whole meeting summary. It is not a summary of the thread. The full text of each unit goes into the local JSON index, along with its conversation and source description. All units in the active file are available to synthesis; the short packet pasted into another app cites only the ones it uses. Your Markdown remains the readable source file.
+A **moment** is an internal citeable unit: one attributed chat turn, one voice thought, or one whole meeting summary. It is not a summary of the thread. The full text of each unit goes into the local JSON index, along with its conversation and source description. All units in the active file are available to synthesis; the summary pasted into another app cites only the ones it uses. Your Markdown remains the readable source file.
 
 The internal JSON is a nonempty array of records. A single record looks like this:
 
@@ -53,7 +53,7 @@ The internal JSON is a nonempty array of records. A single record looks like thi
 
 `conversation_id` and `source_label` are optional metadata. They keep turns from one conversation together and preserve the Markdown file's source description. The source label is also shown in `/debug/last` for selected records. The supplied Markdown is the canonical source; the JSON is a local index for synthesis and citations. Regenerate the JSON after editing the Markdown, since the running service reads the JSON file. A whole meeting summary can be one record, while a chat uses one record per speaker turn.
 
-For this demo, **all records in the active file are sent to the configured OpenAI API** for each context synthesis. The model selects a smaller set of IDs to cite in the returned packet. The service has no ChatGPT account access, automatic import, background capture, or topic classifier. Use one thread per active file; name the problem in the spoken request.
+For this demo, **all records in the active file are sent to the configured OpenAI API** for each context synthesis. The model selects a smaller set of IDs to cite in the returned summary. The service has no ChatGPT account access, automatic import, background capture, or topic classifier. Use one thread per active file; name the problem in the spoken request.
 
 ## 3. Start and check the service
 
@@ -86,7 +86,7 @@ You do not need to build the Handy fork for this stage. If Handy cannot record o
 ## 5. Rehearse the two-app moment
 
 1. Open a fresh ChatGPT conversation. Focus the prompt field. Invoke Handy's post-processing shortcut and say a short request that names your thread, such as “Given everything I've thought about Flow Context, what am I still missing?”
-2. Inspect the pasted prompt before submitting. It should start with **Historical context**, then show **Current direction**, **Why it changed**, **Still open**, source markers, and your exact words under **My request**. Each source marker still says whether its record is real or synthetic.
+2. Inspect the pasted prompt before submitting. It should start with your exact spoken request, followed by a blank line, **Historical context**, one summary, and source markers. Each source marker still says whether its record is real or synthetic.
 3. Open `http://127.0.0.1:8000/debug/last` locally and verify that the selected IDs support the summary. An earlier AI proposal should be described as rejected if a later user turn rejected it.
 4. Open a fresh second agent or coding surface. Say “Can you turn the direction I've landed on for Flow Context into the smallest implementation plan?” The same thread should appear with emphasis suited to this request.
 5. Record the exact spoken requests, selected source IDs, and any failure in an ignored local file such as `data/demo-log.local.md`. Do not copy private source text or credentials into a log or issue.

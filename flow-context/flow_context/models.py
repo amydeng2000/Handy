@@ -23,9 +23,7 @@ class Moment(BaseModel):
 class ContextPacket(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    current_direction: str = Field(min_length=1)
-    why_it_changed: str = Field(min_length=1)
-    open_questions: str = Field(min_length=1)
+    context_summary: str = Field(min_length=1)
     source_ids: list[str] = Field(min_length=1)
 
     @field_validator("source_ids", mode="before")
@@ -35,14 +33,14 @@ class ContextPacket(BaseModel):
             return [source_id.strip() for source_id in value.split(",") if source_id.strip()]
         return value
 
-    @field_validator("current_direction", "why_it_changed", "open_questions", mode="before")
+    @field_validator("context_summary", mode="before")
     @classmethod
     def normalize_bullet_list(cls, value: object) -> object:
         if isinstance(value, list) and all(isinstance(part, str) for part in value):
             return "; ".join(part.strip() for part in value if part.strip())
         return value
 
-    @field_validator("current_direction", "why_it_changed", "open_questions")
+    @field_validator("context_summary")
     @classmethod
     def reject_blank_text(cls, value: str) -> str:
         if not value.strip():
