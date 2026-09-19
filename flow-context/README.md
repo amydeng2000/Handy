@@ -74,11 +74,12 @@ curl http://127.0.0.1:8000/debug/last
 
 The official Handy app is already working locally for recording, transcription, and paste. In Handy settings:
 
-1. Enable **Post Processing** and choose the **Custom** provider.
-2. Set **Base URL** to `http://127.0.0.1:8000/v1`. Leave Handy's **API Key** blank. Select or create model `flow-context`. Refresh the model list after entering the URL if needed.
-3. Create and select a post-processing prompt whose entire **Prompt Instructions** field is `${output}`. This sends the transcription to the local service without additional instructions.
-4. Set **Auto Submit** to **Off** so you can inspect the pasted context before sending it.
-5. Check the separate **Transcribe with Post Processing** shortcut. Its macOS default is `Option+Shift+Space`; use the binding shown in your app if you changed it. Ordinary transcription has its own shortcut.
+1. Open **Advanced** in Handy's sidebar. Under **App**, turn on **Experimental Features**. Scroll to **Experimental** and turn on **Post Processing**. A **Post Process** item then appears in the sidebar.
+2. Open **Post Process** and choose the **Custom** provider.
+3. Set **Base URL** to `http://127.0.0.1:8000/v1`. Leave Handy's **API Key** blank. Select or create model `flow-context`. Refresh the model list after entering the URL if needed.
+4. Create and select a post-processing prompt whose entire **Prompt Instructions** field is `${output}`. This sends the transcription to the local service without additional instructions.
+5. In **Advanced** → **Output**, set **Auto Submit** to **Off** so you can inspect the pasted context before sending it.
+6. On **Post Process**, check the separate **Transcribe with Post Processing** shortcut. Its macOS default is `Option+Shift+Space`; use the binding shown in your app if you changed it. Ordinary transcription has its own shortcut.
 
 You do not need to build the Handy fork for this stage. If Handy cannot record or paste during integration, first try its ordinary shortcut in a plain text field to isolate the baseline issue.
 
