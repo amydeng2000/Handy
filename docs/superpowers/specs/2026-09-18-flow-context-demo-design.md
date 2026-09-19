@@ -8,7 +8,7 @@ Demonstrate the return-to-problem moment described in the [shared brainstorming 
 
 1. Start a fresh ChatGPT conversation. With Handy's post-processing shortcut, dictate: “Given everything I've thought about this, what am I still missing?”
 2. Handy pastes a short prompt containing the original request plus the relevant state of the `Future of Flow` thread. The pasted context is visible because Handy controls text insertion, not ChatGPT's hidden system context.
-3. Show which source moments were used in a local debug view or console, including voice, user and AI chat turns, and any meeting excerpt. The demo must distinguish real artifacts from synthetic examples.
+3. The expanded text pasted into the destination app ends with short source markers such as `voice-01 (Sep 16)` and `chat-02 (Sep 17)`. A local `GET /debug/last` view resolves those markers to date, source type, author role, and `real` or `synthetic` origin. It does not expose full source text. No source list appears in Handy's own UI in the MVP.
 4. Switch to a fresh second agent or coding surface. Dictate: “Can you turn the direction I've landed on into the smallest implementation plan?” The same thread follows the user and the context packet reflects the new task.
 5. Ordinary Handy dictation remains available through its separate transcription shortcut.
 
@@ -28,19 +28,22 @@ spoken request -> Handy transcription -> custom post-processing request
 
 Configure Handy's custom base URL as `http://127.0.0.1:8000/v1`, model as `flow-context`, and selected post-processing prompt as `${output}`. The service implements `GET /v1/models` and `POST /v1/chat/completions`; it accepts Handy's optional `reasoning_effort` field. No API key is needed in Handy. The service loads its upstream model credential from an ignored `.env` file using `python-dotenv`.
 
-The first release has one explicitly active problem thread. Context selection considers all 8–12 curated moments in that thread, with no vector database, scraping, background capture, or automatic thread discovery. Each moment carries date, source, author role, stance, and text so an AI proposal later rejected by the user cannot be reported as the user's current belief. The synthesizer produces a bounded packet with current direction, why it changed, open questions, and source IDs. The original dictated request remains verbatim at the end.
+Handy sends the current transcription and selected prompt to its provider; it does not attach the local moment file. Sending that request directly to OpenAI would give the model no historical thread data. The local service reads the file, selects the active thread, asks OpenAI to synthesize the current state, and returns an enriched prompt in the response format Handy already expects.
+
+The first release has one explicitly active problem thread, chosen by `FLOW_CONTEXT_THREAD_ID` in local configuration. The JSON store may contain other threads, but they are ignored until the active thread is changed. A request such as “What am I missing about this?” does not identify a topic on its own, and Handy's current post-processing request supplies no foreground-app context for resolving “this.” Context selection considers all 8–12 curated moments in the active thread, with no vector database, scraping, background capture, or automatic thread discovery. Each moment carries date, source, author role, stance, origin (`real` or `synthetic`), and text so an AI proposal later rejected by the user cannot be reported as the user's current belief. The synthesizer produces a bounded packet with current direction, why it changed, open questions, and source IDs. The original dictated request remains verbatim at the end.
 
 If context generation fails or returns no trustworthy result, the service returns the original request. Do not invent context or silently substitute an unrelated thread. The service listens only on loopback. Handy's auto-submit setting stays off so the user can inspect the expanded prompt before sending it.
 
 ## Data and privacy
 
-Commit only a clearly labeled synthetic example dataset. The shared ChatGPT conversation can inform that example, but its hypothetical meeting descriptions must not be presented as meetings that occurred. Real conversation excerpts, meeting notes, and `.env` stay in ignored local files. The service should log source IDs, source types, and token or character counts for the demo; it should not log full source text or API credentials.
+Commit only a clearly labeled synthetic example dataset. The shared ChatGPT conversation can inform that example, but its hypothetical meeting descriptions must not be presented as meetings that occurred. Real conversation excerpts, meeting notes, and `.env` stay in ignored local files. There is no upload UI in the MVP: the user adds one dated JSON record per useful voice thought, user chat turn, AI chat turn, document excerpt, or real meeting excerpt to `flow-context/data/moments.local.json`. The service rereads that file for each dictation, so added moments are available on the next request. The shared ChatGPT link is planning input; the service does not automatically read it or the user's ChatGPT account. The service should log source IDs, source types, origin labels, and character counts for the demo; it should not log full source text or API credentials. All moments in the active thread are sent to the configured OpenAI API for synthesis; the source markers identify the subset used in the returned context packet. If synthetic moments are used in a live prompt, label that prompt as illustrative and mark those source IDs as synthetic.
 
 ## Alternative approaches
 
 | Approach | Value | Cost | Decision |
 | --- | --- | --- | --- |
 | Existing Handy app + local provider | Fastest path to the cross-app moment; no desktop build | Context appears in pasted prompt; no native memory badge | **MVP** |
+| Handy directly to OpenAI with a fixed context prompt | No local service | Context must be copied into Handy settings and cannot update or select moments from the local store | Smaller static mock only |
 | Modify Handy's Rust pipeline and overlay | Native “context added” treatment and richer status | Desktop build, permissions, event wiring, fork maintenance | Only after MVP works |
 | Browser extension or agent integration | Could pass context in a more native way | Different integration per destination; obscures the core demo | Outside demo scope |
 
@@ -56,4 +59,4 @@ Commit only a clearly labeled synthetic example dataset. The shared ChatGPT conv
 
 Install and launch the official Handy macOS app first to confirm microphone permission, Accessibility permission, model download, shortcut behavior, and paste into a plain text field. Use that app for the sidecar MVP. Quit the official app before running a locally built Handy fork: the two builds share Handy's single-instance behavior and app identity. A local build is only needed for the optional native overlay stage.
 
-This checkout is a local clone on `flow-context-demo` with `upstream` pointing to `cjpais/Handy`. A GitHub-hosted fork cannot be created until GitHub authentication is restored in this environment.
+This checkout is on `flow-context-demo`, with `upstream` pointing to `cjpais/Handy` and `origin` pointing to the user's GitHub fork. The user reported that the official Handy app is working locally.
